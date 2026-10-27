@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# OAuth Tokens & Cache files (NEVER COMMIT)
+oauth.json
+browser.json
+headers.json
+.cache
+.cache-*
+*.token
+
+# Logs & temp files
+*.log
+/tmp/
+
+# IDE files
+.vscode/
+.idea/

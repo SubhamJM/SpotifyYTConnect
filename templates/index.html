@@ -165,12 +165,24 @@
         <label>Spotify Client Secret</label>
         <input type="password" id="sp-client-secret" class="form-control" placeholder="From Spotify Developer Dashboard">
       </div>
-      <div class="form-group">
-        <label>Spotify Refresh Token (Optional for write)</label>
-        <input type="password" id="sp-refresh-token" class="form-control" placeholder="Generated via python setup_spotify.py">
-        <div class="form-hint">Required if you want to write/edit Spotify playlists.</div>
+
+      <div style="background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 8px; padding: 10px; margin-bottom: 1.2rem; font-size: 0.8rem;">
+        <b>⚠️ Important 1-time step in Spotify Dashboard:</b><br>
+        In your Spotify App settings, add this exact Redirect URI:<br>
+        <code id="sp-redirect-display" style="color: #58a6ff; font-weight: bold; word-break: break-all;"></code>
       </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="saveSpotify()">Save & Connect</button>
+
+      <button class="btn btn-primary" style="width:100%; margin-bottom: 0.8rem;" onclick="loginWithSpotify()">
+        <span>🎵</span> Log in with Spotify (Automatic)
+      </button>
+
+      <details style="margin-top: 0.8rem; font-size: 0.85rem; color: var(--text-muted);">
+        <summary style="cursor: pointer; margin-bottom: 0.5rem;">Or paste Refresh Token manually</summary>
+        <div class="form-group">
+          <input type="password" id="sp-refresh-token" class="form-control" placeholder="Paste SPOTIFY_REFRESH_TOKEN">
+        </div>
+        <button class="btn btn-outline" style="width:100%;" onclick="saveSpotify()">Save Token Manually</button>
+      </details>
     </div>
   </div>
 
@@ -328,6 +340,38 @@
       }
     }
 
+    function updateRedirectDisplay() {
+      const el = document.getElementById('sp-redirect-display');
+      if (el) {
+        el.innerText = window.location.origin + '/callback';
+      }
+    }
+
+    async function loginWithSpotify() {
+      const client_id = document.getElementById('sp-client-id').value.trim();
+      const client_secret = document.getElementById('sp-client-secret').value.trim();
+      if (!client_id || !client_secret) {
+        alert('Please enter your Spotify Client ID and Client Secret.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/connect/spotify/auth-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id, client_secret })
+        });
+        const data = await res.json();
+        if (data.success && data.auth_url) {
+          window.location.href = data.auth_url;
+        } else {
+          alert('Error generating login link: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Failed to connect to server: ' + err);
+      }
+    }
+
     async function saveSpotify() {
       const client_id = document.getElementById('sp-client-id').value;
       const client_secret = document.getElementById('sp-client-secret').value;
@@ -452,8 +496,16 @@
     }
 
     // Initial load
+    updateRedirectDisplay();
     fetchStatus();
     loadPairs();
+
+    // Check if redirected from Spotify OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('spotify_connected')) {
+      alert('🎉 Spotify account connected and authorized successfully!');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   </script>
 </body>
 </html>

@@ -7,6 +7,13 @@ from src.matcher import clean_title, calculate_match_score
 logger = logging.getLogger(__name__)
 
 
+class HeadlessSpotifyOAuth(SpotifyOAuth):
+    def _get_user_input(self, prompt):
+        raise spotipy.SpotifyOauthError(
+            "Spotify authorization required or token invalid. Headless mode does not support interactive CLI login."
+        )
+
+
 class SpotifyClient:
     def __init__(self, client_id: str, client_secret: str, refresh_token: str = ""):
         self.client_id = client_id
@@ -19,12 +26,13 @@ class SpotifyClient:
         if self.refresh_token:
             logger.info("Authenticating with Spotify using OAuth Refresh Token (Read & Write)...")
             cache_handler = MemoryCacheHandler(token_info={"refresh_token": self.refresh_token})
-            oauth = SpotifyOAuth(
+            oauth = HeadlessSpotifyOAuth(
                 client_id=self.client_id,
                 client_secret=self.client_secret,
                 redirect_uri="http://127.0.0.1:9090",
                 scope="playlist-modify-public playlist-modify-private playlist-read-private",
                 cache_handler=cache_handler,
+                open_browser=False,
             )
             return spotipy.Spotify(auth_manager=oauth)
         else:

@@ -13,4 +13,4 @@ COPY . .
 
 EXPOSE 5000
 
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5000", "-t", "300", "web_app:app"]
+CMD ["gunicorn", "--workers", "1", "--threads", "4", "-b", "0.0.0.0:5000", "-t", "120", "web_app:app"]

@@ -3,7 +3,9 @@ import logging
 import os
 import threading
 import time
-from flask import Flask, render_template, request, jsonify
+import urllib.parse
+import requests
+from flask import Flask, render_template, request, jsonify, redirect, session
 from dotenv import set_key, load_dotenv
 
 from src.config import Config, extract_spotify_playlist_id, extract_ytmusic_playlist_id
@@ -15,7 +17,14 @@ from setup_ytmusic import extract_browser_auth
 load_dotenv()
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "spotifyytconnect-secret-key-123"
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "spotifyytconnect-secret-key-123")
+
+
+def get_redirect_uri():
+    proto = request.headers.get("X-Forwarded-Proto", "http")
+    if "onrender.com" in request.host or "https://" in request.url_root:
+        proto = "https"
+    return f"{proto}://{request.host}/callback"
 
 # In-memory status & logs for the background sync job
 sync_state = {
@@ -118,6 +127,78 @@ def get_status():
             "is_syncing": sync_state["is_running"],
         }
     )
+
+
+@app.route("/api/connect/spotify/auth-url", methods=["POST"])
+def get_spotify_auth_url():
+    data = request.json or {}
+    client_id = data.get("client_id", "").strip()
+    client_secret = data.get("client_secret", "").strip()
+
+    if not client_id or not client_secret:
+        return jsonify({"success": False, "error": "Client ID and Client Secret are required."}), 400
+
+    session["spotify_client_id"] = client_id
+    session["spotify_client_secret"] = client_secret
+    set_key(".env", "SPOTIPY_CLIENT_ID", client_id)
+    set_key(".env", "SPOTIPY_CLIENT_SECRET", client_secret)
+
+    redirect_uri = get_redirect_uri()
+    params = {
+        "client_id": client_id,
+        "response_type": "code",
+        "redirect_uri": redirect_uri,
+        "scope": "playlist-modify-public playlist-modify-private playlist-read-private",
+        "show_dialog": "true",
+    }
+    auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
+    return jsonify({"success": True, "auth_url": auth_url, "redirect_uri": redirect_uri})
+
+
+@app.route("/callback")
+def spotify_callback():
+    code = request.args.get("code")
+    err = request.args.get("error")
+    if err:
+        return f"Spotify authorization error: {err}. <br><a href='/'>Return to Dashboard</a>", 400
+
+    if not code:
+        return "Missing authorization code from Spotify. <br><a href='/'>Return to Dashboard</a>", 400
+
+    cfg = Config()
+    client_id = session.get("spotify_client_id") or cfg.spotify_client_id
+    client_secret = session.get("spotify_client_secret") or cfg.spotify_client_secret
+    redirect_uri = get_redirect_uri()
+
+    try:
+        res = requests.post(
+            "https://accounts.spotify.com/api/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=15,
+        )
+        data = res.json()
+        if "error" in data:
+            desc = data.get("error_description", data.get("error"))
+            return f"Spotify Token Exchange Error: {desc}. <br><a href='/'>Return to Dashboard</a>", 400
+
+        refresh_token = data.get("refresh_token")
+        if refresh_token:
+            set_key(".env", "SPOTIPY_CLIENT_ID", client_id)
+            set_key(".env", "SPOTIPY_CLIENT_SECRET", client_secret)
+            set_key(".env", "SPOTIFY_REFRESH_TOKEN", refresh_token)
+            load_dotenv(override=True)
+            return redirect("/?spotify_connected=1")
+        else:
+            return "Failed to receive refresh token from Spotify. <br><a href='/'>Return to Dashboard</a>", 400
+    except Exception as e:
+        return f"Error exchanging token with Spotify: {e}. <br><a href='/'>Return to Dashboard</a>", 500
 
 
 @app.route("/api/connect/spotify", methods=["POST"])

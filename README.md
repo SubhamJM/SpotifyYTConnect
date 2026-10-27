@@ -87,36 +87,26 @@ Whoever owns the destination Spotify playlist (or needs Spotify access) performs
 
 ---
 
-### Step 3: YouTube Music Authorization
+### Step 3: YouTube Music Authorization (15 Seconds)
 
-Whoever owns the YouTube Music playlist performs this step:
+Whoever owns the YouTube Music playlist performs this step. **No Google Cloud setup or API keys are required!**
 
-Run the interactive setup helper:
-```bash
-python setup_ytmusic.py
-```
+1. Open [music.youtube.com](https://music.youtube.com) in your browser (Chrome, Firefox, Edge, or Brave) while logged in to your account.
+2. Press **F12** to open Developer Tools, then click the **Network** tab.
+3. Click any song, album, or playlist on YouTube Music to trigger network traffic.
+4. In the Network tab list, right-click any request (e.g. `browse`, `next`, or `player`):
+   * **Chrome / Edge / Brave:** Right-click $\rightarrow$ **Copy** $\rightarrow$ **Copy as cURL**
+   * **Firefox:** Right-click $\rightarrow$ **Copy Value** $\rightarrow$ **Copy Request Headers**
+5. In your terminal, run:
+   ```bash
+   python setup_ytmusic.py
+   ```
+6. Select **Option 1** (Browser Setup), paste what you copied, and hit Enter.
+7. The script automatically verifies your login, tests the YouTube Music API connection, and outputs your **`YTM_BROWSER_JSON`**!
+8. Add this in your GitHub Repo under **Settings $\rightarrow$ Secrets and variables $\rightarrow$ Actions** as:
+   `YTM_BROWSER_JSON`
 
-You can choose either of two methods:
-
-#### Method A: Google Cloud OAuth (Recommended for CI/CD)
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a free project (e.g. `YTMusicSync`).
-3. Under **APIs & Services** $\rightarrow$ **Library**, search for **YouTube Data API v3** and click **Enable**.
-4. Go to **APIs & Services** $\rightarrow$ **OAuth consent screen**:
-   * User Type: **External**
-   * Fill in App Name and your email, then save.
-   * Under **Test Users**, add your Google Account email!
-5. Go to **APIs & Services** $\rightarrow$ **Credentials**:
-   * Click **Create Credentials** $\rightarrow$ **OAuth client ID**.
-   * Application type: **TVs and Limited Input devices** (or **Desktop App**).
-6. Enter the Client ID and Secret in `python setup_ytmusic.py` (Option 1).
-7. It will provide a link (`https://www.google.com/device`) and code. Open the link, sign in to your YouTube Music Google account, and enter the code.
-8. The script saves `oauth.json` and prints the compact JSON text. Copy it!
-
-#### Method B: Browser Headers (Quick Alternative)
-If you don't want to create a Google Cloud project:
-1. Run `python setup_ytmusic.py` and choose **Option 2**.
-2. Follow the on-screen instructions to copy request headers from [music.youtube.com](https://music.youtube.com) DevTools.
+*(Optional: If you prefer Google Cloud OAuth instead of browser headers, choose Option 2).*
 
 ---
 

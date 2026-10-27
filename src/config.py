@@ -99,10 +99,16 @@ class Config:
         if not self.spotify_client_secret:
             errors.append("SPOTIPY_CLIENT_SECRET is not set.")
 
-        # Check if oauth.json exists in root if YTM_OAUTH_JSON is not set
-        has_local_oauth = os.path.isfile("oauth.json") or os.path.isfile("browser.json")
-        if not self.ytm_oauth_json and not self.ytm_browser_json and not has_local_oauth:
-            errors.append("YouTube Music authentication is missing. Provide YTM_OAUTH_JSON or oauth.json.")
+        has_local_auth = (
+            os.path.isfile("oauth.json")
+            or os.path.isfile("browser.json")
+            or bool(self.ytm_oauth_json)
+            or bool(self.ytm_browser_json)
+        )
+        if not has_local_auth:
+            errors.append(
+                "YouTube Music authentication is missing. Provide YTM_BROWSER_JSON, YTM_OAUTH_JSON, browser.json, or oauth.json."
+            )
 
         if not self.sync_pairs:
             errors.append("No playlist sync pairs configured. Set SPOTIFY_PLAYLIST_ID and YTMUSIC_PLAYLIST_ID.")

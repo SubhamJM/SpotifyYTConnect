@@ -505,6 +505,7 @@
     if (urlParams.get('spotify_connected')) {
       alert('🎉 Spotify account connected and authorized successfully!');
       window.history.replaceState({}, document.title, window.location.pathname);
+      fetchStatus();
     }
   </script>
 </body>

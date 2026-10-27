@@ -1,4 +1,5 @@
 import logging
+import time
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
 from spotipy.cache_handler import MemoryCacheHandler
@@ -12,6 +13,27 @@ class HeadlessSpotifyOAuth(SpotifyOAuth):
         raise spotipy.SpotifyOauthError(
             "Spotify authorization required or token invalid. Headless mode does not support interactive CLI login."
         )
+
+    def get_access_token(self, code=None, as_dict=True, check_cache=True):
+        """Custom non-blocking token resolver that refreshes access token using refresh token."""
+        token_info = self.cache_handler.get_cached_token() if self.cache_handler else None
+        now = int(time.time())
+
+        # If cached token is present and still valid for at least 60s, return it
+        if token_info and token_info.get("access_token") and token_info.get("expires_at", 0) - now > 60:
+            return token_info if as_dict else token_info["access_token"]
+
+        # Otherwise refresh using the refresh token
+        refresh_token = (
+            (token_info.get("refresh_token") if token_info else None)
+            or getattr(self.cache_handler, "token_info", {}).get("refresh_token")
+        )
+
+        if not refresh_token:
+            raise spotipy.SpotifyOauthError("No Spotify refresh token available.")
+
+        token_info = self.refresh_access_token(refresh_token)
+        return token_info if as_dict else token_info["access_token"]
 
 
 class SpotifyClient:

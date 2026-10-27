@@ -101,7 +101,8 @@ def get_status():
             else:
                 spotify_connected = True
                 spotify_user = "Read-Only (Client Credentials)"
-        except Exception:
+        except Exception as e:
+            logging.error(f"Error checking Spotify status in /api/status: {e}")
             spotify_connected = False
 
     yt_connected = False
@@ -140,6 +141,8 @@ def get_spotify_auth_url():
 
     session["spotify_client_id"] = client_id
     session["spotify_client_secret"] = client_secret
+    os.environ["SPOTIPY_CLIENT_ID"] = client_id
+    os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
     set_key(".env", "SPOTIPY_CLIENT_ID", client_id)
     set_key(".env", "SPOTIPY_CLIENT_SECRET", client_secret)
 
@@ -190,6 +193,9 @@ def spotify_callback():
 
         refresh_token = data.get("refresh_token")
         if refresh_token:
+            os.environ["SPOTIPY_CLIENT_ID"] = client_id
+            os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
+            os.environ["SPOTIFY_REFRESH_TOKEN"] = refresh_token
             set_key(".env", "SPOTIPY_CLIENT_ID", client_id)
             set_key(".env", "SPOTIPY_CLIENT_SECRET", client_secret)
             set_key(".env", "SPOTIFY_REFRESH_TOKEN", refresh_token)
@@ -219,10 +225,13 @@ def connect_spotify():
             user_info = sp.sp.current_user()
             user_name = user_info.get("display_name") or user_info.get("id")
 
-        # Save to .env
+        # Save to .env and os.environ
+        os.environ["SPOTIPY_CLIENT_ID"] = client_id
+        os.environ["SPOTIPY_CLIENT_SECRET"] = client_secret
         set_key(".env", "SPOTIPY_CLIENT_ID", client_id)
         set_key(".env", "SPOTIPY_CLIENT_SECRET", client_secret)
         if refresh_token:
+            os.environ["SPOTIFY_REFRESH_TOKEN"] = refresh_token
             set_key(".env", "SPOTIFY_REFRESH_TOKEN", refresh_token)
 
         load_dotenv(override=True)

@@ -47,10 +47,21 @@ def sync_spotify_to_ytmusic(
     spotify_playlist_id: str,
     ytmusic_playlist_id: str,
 ) -> dict:
-    """Syncs tracks from Spotify to YouTube Music."""
+    """Syncs tracks from Spotify to YouTube Music. Auto-creates target playlist if needed."""
     logger.info("=" * 60)
     logger.info(f"Syncing: Spotify [{spotify_playlist_id}] -> YouTube Music [{ytmusic_playlist_id}]")
     logger.info("=" * 60)
+
+    # Auto-create destination playlist if set to "auto" or empty
+    if not ytmusic_playlist_id or ytmusic_playlist_id.lower() in ("auto", "new", "create"):
+        source_details = sp_client.get_playlist_details(spotify_playlist_id)
+        target_name = source_details.get("name") or "Spotify Mirror"
+        logger.info(f"Target YouTube Music playlist not specified. Creating playlist: '{target_name}'...")
+        ytmusic_playlist_id = yt_client.create_playlist(
+            title=target_name,
+            description=f"Mirrored from Spotify playlist '{target_name}' via SpotifyYTConnect",
+        )
+        logger.info(f"Created new YouTube Music target playlist with ID: {ytmusic_playlist_id}")
 
     sp_tracks = sp_client.get_playlist_tracks(spotify_playlist_id)
     yt_tracks = yt_client.get_playlist_tracks(ytmusic_playlist_id)
@@ -100,6 +111,8 @@ def sync_spotify_to_ytmusic(
     return {
         "source": "Spotify",
         "target": "YouTube Music",
+        "source_playlist_id": spotify_playlist_id,
+        "target_playlist_id": ytmusic_playlist_id,
         "total_source_tracks": len(sp_tracks),
         "total_added": total_added,
         "added_details": added_titles,
@@ -113,10 +126,21 @@ def sync_ytmusic_to_spotify(
     ytmusic_playlist_id: str,
     spotify_playlist_id: str,
 ) -> dict:
-    """Syncs tracks from YouTube Music to Spotify."""
+    """Syncs tracks from YouTube Music to Spotify. Auto-creates target playlist if needed."""
     logger.info("=" * 60)
     logger.info(f"Syncing: YouTube Music [{ytmusic_playlist_id}] -> Spotify [{spotify_playlist_id}]")
     logger.info("=" * 60)
+
+    # Auto-create destination playlist if set to "auto" or empty
+    if not spotify_playlist_id or spotify_playlist_id.lower() in ("auto", "new", "create"):
+        source_details = yt_client.get_playlist_details(ytmusic_playlist_id)
+        target_name = source_details.get("name") or "YT Music Mirror"
+        logger.info(f"Target Spotify playlist not specified. Creating playlist: '{target_name}'...")
+        spotify_playlist_id = sp_client.create_playlist(
+            name=target_name,
+            description=f"Mirrored from YouTube Music playlist '{target_name}' via SpotifyYTConnect",
+        )
+        logger.info(f"Created new Spotify target playlist with ID: {spotify_playlist_id}")
 
     yt_tracks = yt_client.get_playlist_tracks(ytmusic_playlist_id)
     sp_tracks = sp_client.get_playlist_tracks(spotify_playlist_id)
@@ -164,6 +188,8 @@ def sync_ytmusic_to_spotify(
     return {
         "source": "YouTube Music",
         "target": "Spotify",
+        "source_playlist_id": ytmusic_playlist_id,
+        "target_playlist_id": spotify_playlist_id,
         "total_source_tracks": len(yt_tracks),
         "total_added": total_added,
         "added_details": added_titles,

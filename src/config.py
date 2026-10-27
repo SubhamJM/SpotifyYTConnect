@@ -81,6 +81,22 @@ class Config:
             except Exception as e:
                 print(f"[Config Warning] Failed to parse SYNC_PAIRS JSON: {e}")
 
+        # Check sync_pairs.json file
+        if not pairs and os.path.isfile("sync_pairs.json"):
+            try:
+                with open("sync_pairs.json", "r") as f:
+                    stored = json.load(f)
+                for item in stored:
+                    src_plat = item.get("source_platform", "spotify")
+                    src_id = item.get("source_id", "")
+                    tgt_id = item.get("target_id", "auto")
+                    if src_plat == "spotify":
+                        pairs.append(SyncPair(src_id, tgt_id, "spotify_to_yt"))
+                    else:
+                        pairs.append(SyncPair(tgt_id, src_id, "yt_to_spotify"))
+            except Exception as e:
+                print(f"[Config Warning] Failed to parse sync_pairs.json: {e}")
+
         # Fallback to single pair env vars if no valid pairs were added
         if not pairs:
             sp_id = extract_spotify_playlist_id(os.getenv("SPOTIFY_PLAYLIST_ID", ""))

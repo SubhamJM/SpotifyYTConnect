@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpotifyYTConnect - Playlist Mirror Synchronizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090c10;
+      --card-bg: #161b22;
+      --card-border: #30363d;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --spotify: #1db954;
+      --spotify-glow: rgba(29, 185, 84, 0.2);
+      --ytmusic: #ff0000;
+      --ytmusic-glow: rgba(255, 0, 0, 0.2);
+      --accent: #58a6ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; padding: 2rem 1rem; }
+    .container { max-width: 960px; margin: 0 auto; }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 2.5rem; }
+    .badge { display: inline-block; background: rgba(88, 166, 255, 0.15); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.8rem; }
+    h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 0.5rem; }
+    h1 span.sp { color: var(--spotify); }
+    h1 span.yt { color: var(--ytmusic); }
+    header p { color: var(--text-muted); font-size: 1.05rem; }
+
+    /* Accounts Grid */
+    .accounts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.2rem; margin-bottom: 2rem; }
+    .account-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; }
+    .account-card.spotify { border-left: 4px solid var(--spotify); box-shadow: 0 4px 20px var(--spotify-glow); }
+    .account-card.ytmusic { border-left: 4px solid var(--ytmusic); box-shadow: 0 4px 20px var(--ytmusic-glow); }
+    .acc-info h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .acc-info p { font-size: 0.85rem; color: var(--text-muted); }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-green { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
+    .dot-red { background: #f85149; }
+
+    /* Buttons */
+    .btn { background: #21262d; color: var(--text-main); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: linear-gradient(135deg, #1db954, #128238); color: white; border: none; font-size: 1rem; padding: 12px 24px; border-radius: 12px; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-outline { border-color: var(--card-border); background: transparent; }
+
+    /* Pairs Section */
+    .section-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 1.8rem; margin-bottom: 2rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .section-header h2 { font-size: 1.4rem; font-weight: 700; }
+
+    .pairs-list { display: flex; flex-direction: column; gap: 1rem; }
+    .pair-item { background: #0d1117; border: 1px solid var(--card-border); border-radius: 12px; padding: 1.2rem; display: flex; align-items: center; justify-content: space-between; transition: border-color 0.2s; }
+    .pair-item:hover { border-color: #58a6ff; }
+    .pair-flow { display: flex; align-items: center; gap: 1.2rem; flex: 1; }
+    .platform-pill { padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+    .pill-spotify { background: rgba(29, 185, 84, 0.15); color: var(--spotify); border: 1px solid rgba(29, 185, 84, 0.3); }
+    .pill-ytmusic { background: rgba(255, 0, 0, 0.15); color: var(--ytmusic); border: 1px solid rgba(255, 0, 0, 0.3); }
+    .arrow { color: var(--text-muted); font-size: 1.2rem; }
+
+    /* Actions Bar */
+    .actions-bar { display: flex; gap: 1rem; align-items: center; justify-content: center; margin-top: 1.5rem; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; width: 100%; max-width: 520px; padding: 2rem; position: relative; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-header h3 { font-size: 1.3rem; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+    .form-control { width: 100%; background: #0d1117; border: 1px solid var(--card-border); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 0.95rem; }
+    .form-control:focus { outline: none; border-color: var(--accent); }
+    textarea.form-control { min-height: 110px; resize: vertical; font-family: monospace; font-size: 0.8rem; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Terminal Log Console */
+    .log-card { background: #05070a; border: 1px solid var(--card-border); border-radius: 12px; padding: 1rem; font-family: monospace; font-size: 0.82rem; max-height: 220px; overflow-y: auto; color: #7ee787; margin-top: 1rem; display: none; }
+    .log-card.active { display: block; }
+    .log-line { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">FREE & OPEN SOURCE • NO SUBSCRIPTIONS</div>
+      <h1><span class="sp">Spotify</span> <span style="color:#fff;">⇄</span> <span class="yt">YouTube Music</span></h1>
+      <p>Continuous mirror sync across playlists for you and your friend.</p>
+    </header>
+
+    <!-- Account Connect Bar -->
+    <div class="accounts-grid">
+      <div class="account-card spotify">
+        <div class="acc-info">
+          <h3>
+            <span class="status-dot" id="sp-dot"></span> Spotify
+          </h3>
+          <p id="sp-status">Checking connection...</p>
+        </div>
+        <button class="btn" onclick="openModal('spotify-modal')">Configure</button>
+      </div>
+
+      <div class="account-card ytmusic">
+        <div class="acc-info">
+          <h3>
+            <span class="status-dot" id="yt-dot"></span> YouTube Music
+          </h3>
+          <p id="yt-status">Checking connection...</p>
+        </div>
+        <button class="btn" onclick="openModal('ytmusic-modal')">Configure</button>
+      </div>
+    </div>
+
+    <!-- Active Playlist Pairs -->
+    <div class="section-card">
+      <div class="section-header">
+        <div>
+          <h2>Playlist Mirror Pairs</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Each pair maintains an exact, separate clone across platforms.</p>
+        </div>
+        <button class="btn" onclick="openAddPairModal()">+ Add New Pair</button>
+      </div>
+
+      <div class="pairs-list" id="pairs-container">
+        <div style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading sync pairs...</div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="actions-bar">
+        <button class="btn btn-primary" id="sync-now-btn" onclick="runSync()">
+          <span>🔄</span> Sync Now
+        </button>
+        <button class="btn btn-outline" onclick="openExportModal()">
+          <span>🚀</span> Export for GitHub Actions
+        </button>
+      </div>
+
+      <!-- Live Sync Logs Console -->
+      <div class="log-card" id="log-console"></div>
+    </div>
+  </div>
+
+  <!-- Spotify Modal -->
+  <div class="modal" id="spotify-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Connect Spotify</h3>
+        <button class="close-btn" onclick="closeModal('spotify-modal')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Spotify Client ID</label>
+        <input type="text" id="sp-client-id" class="form-control" placeholder="From Spotify Developer Dashboard">
+      </div>
+      <div class="form-group">
+        <label>Spotify Client Secret</label>
+        <input type="password" id="sp-client-secret" class="form-control" placeholder="From Spotify Developer Dashboard">
+      </div>
+      <div class="form-group">
+        <label>Spotify Refresh Token (Optional for write)</label>
+        <input type="password" id="sp-refresh-token" class="form-control" placeholder="Generated via python setup_spotify.py">
+        <div class="form-hint">Required if you want to write/edit Spotify playlists.</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="saveSpotify()">Save & Connect</button>
+    </div>
+  </div>
+
+  <!-- YouTube Music Modal -->
+  <div class="modal" id="ytmusic-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Connect YouTube Music</h3>
+        <button class="close-btn" onclick="closeModal('ytmusic-modal')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>⚡ 15-Second Browser Copy (cURL / Request Headers / Cookie)</label>
+        <textarea id="yt-raw-input" class="form-control" placeholder="Open music.youtube.com -> F12 Network tab -> Right click any request -> Copy as cURL or Copy Request Headers, and paste here!"></textarea>
+        <div class="form-hint">No Google Cloud needed! Just copy any request from Developer Tools.</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="saveYTMusic()">Save & Connect</button>
+    </div>
+  </div>
+
+  <!-- Add Pair Modal -->
+  <div class="modal" id="pair-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add Mirror Playlist Pair</h3>
+        <button class="close-btn" onclick="closeModal('pair-modal')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Source Platform</label>
+        <select id="pair-source-plat" class="form-control" onchange="loadSourcePlaylists()">
+          <option value="spotify">Spotify</option>
+          <option value="ytmusic">YouTube Music</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Source Playlist URL or ID</label>
+        <input type="text" id="pair-source-id" class="form-control" placeholder="e.g. https://open.spotify.com/playlist/... or ID">
+      </div>
+      <div class="form-group">
+        <label>Destination Playlist</label>
+        <select id="pair-target-mode" class="form-control" onchange="toggleTargetInput()">
+          <option value="auto">⭐ Auto-Create New Clone Playlist (Recommended)</option>
+          <option value="custom">Select / Paste Existing Playlist</option>
+        </select>
+      </div>
+      <div class="form-group" id="pair-target-group" style="display:none;">
+        <label>Destination Playlist URL or ID</label>
+        <input type="text" id="pair-target-id" class="form-control" placeholder="Existing playlist ID or URL">
+      </div>
+      <div class="form-group">
+        <label>Pair Nickname (Optional)</label>
+        <input type="text" id="pair-name" class="form-control" placeholder="e.g. 'for You' Mirror">
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="createPair()">Create Mirror Pair</button>
+    </div>
+  </div>
+
+  <!-- GitHub Export Modal -->
+  <div class="modal" id="export-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🚀 GitHub Actions Secrets</h3>
+        <button class="close-btn" onclick="closeModal('export-modal')">&times;</button>
+      </div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+        Add these into your repository's <b>Settings → Secrets and variables → Actions</b> to run auto-sync every 4 hours forever!
+      </p>
+      <div id="export-secrets-list" style="display:flex; flex-direction:column; gap:0.8rem; max-height:300px; overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <script>
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function toggleTargetInput() {
+      const mode = document.getElementById('pair-target-mode').value;
+      document.getElementById('pair-target-group').style.display = mode === 'custom' ? 'block' : 'none';
+    }
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        // Spotify
+        const spDot = document.getElementById('sp-dot');
+        const spStatus = document.getElementById('sp-status');
+        if (data.spotify.connected) {
+          spDot.className = 'status-dot dot-green';
+          spStatus.innerText = data.spotify.user ? `Connected (${data.spotify.user})` : 'Connected';
+        } else {
+          spDot.className = 'status-dot dot-red';
+          spStatus.innerText = 'Not configured';
+        }
+
+        // YT Music
+        const ytDot = document.getElementById('yt-dot');
+        const ytStatus = document.getElementById('yt-status');
+        if (data.ytmusic.connected) {
+          ytDot.className = 'status-dot dot-green';
+          ytStatus.innerText = 'Connected & Authenticated';
+        } else {
+          ytDot.className = 'status-dot dot-red';
+          ytStatus.innerText = 'Not configured';
+        }
+
+        if (data.is_syncing) {
+          document.getElementById('sync-now-btn').disabled = true;
+          document.getElementById('sync-now-btn').innerHTML = '<span>⏳</span> Syncing...';
+          document.getElementById('log-console').classList.add('active');
+          pollSync();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadPairs() {
+      try {
+        const res = await fetch('/api/pairs');
+        const data = await res.json();
+        const container = document.getElementById('pairs-container');
+        if (!data.pairs || data.pairs.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding: 2rem; color: var(--text-muted);">
+              No playlist pairs configured yet.<br>Click <b>+ Add New Pair</b> to connect your first playlist.
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = data.pairs.map((p, idx) => `
+          <div class="pair-item">
+            <div class="pair-flow">
+              <span class="platform-pill ${p.source_platform === 'spotify' ? 'pill-spotify' : 'pill-ytmusic'}">
+                ${p.source_platform === 'spotify' ? 'Spotify' : 'YouTube Music'}
+              </span>
+              <div>
+                <b style="font-size:0.95rem;">${p.name}</b>
+                <div style="font-size:0.75rem; color:var(--text-muted); font-family:monospace;">ID: ${p.source_id.substring(0, 15)}...</div>
+              </div>
+              <span class="arrow">──►</span>
+              <span class="platform-pill ${p.target_platform === 'spotify' ? 'pill-spotify' : 'pill-ytmusic'}">
+                ${p.target_platform === 'spotify' ? 'Spotify' : 'YouTube Music'}
+              </span>
+              <div>
+                <span style="font-size:0.9rem; color:#7ee787;">
+                  ${p.target_id === 'auto' ? 'Auto-Clone Mirror' : 'ID: ' + p.target_id.substring(0, 15) + '...'}
+                </span>
+              </div>
+            </div>
+            <button class="btn" onclick="deletePair(${idx})" style="color:#f85149;">Delete</button>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function saveSpotify() {
+      const client_id = document.getElementById('sp-client-id').value;
+      const client_secret = document.getElementById('sp-client-secret').value;
+      const refresh_token = document.getElementById('sp-refresh-token').value;
+
+      const res = await fetch('/api/connect/spotify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id, client_secret, refresh_token })
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeModal('spotify-modal');
+        fetchStatus();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    }
+
+    async function saveYTMusic() {
+      const raw_input = document.getElementById('yt-raw-input').value;
+      const res = await fetch('/api/connect/ytmusic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw_input })
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeModal('ytmusic-modal');
+        fetchStatus();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    }
+
+    function openAddPairModal() {
+      openModal('pair-modal');
+    }
+
+    async function createPair() {
+      const source_platform = document.getElementById('pair-source-plat').value;
+      const source_id = document.getElementById('pair-source-id').value;
+      const target_mode = document.getElementById('pair-target-mode').value;
+      const target_id = target_mode === 'auto' ? 'auto' : document.getElementById('pair-target-id').value;
+      const name = document.getElementById('pair-name').value;
+
+      const res = await fetch('/api/pairs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_platform, source_id, target_id, name })
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeModal('pair-modal');
+        loadPairs();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    }
+
+    async function deletePair(idx) {
+      if (!confirm('Remove this playlist sync pair?')) return;
+      await fetch(`/api/pairs/${idx}`, { method: 'DELETE' });
+      loadPairs();
+    }
+
+    async function runSync() {
+      const btn = document.getElementById('sync-now-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Syncing...';
+      const logConsole = document.getElementById('log-console');
+      logConsole.classList.add('active');
+      logConsole.innerHTML = '<div class="log-line">Starting playlist sync...</div>';
+
+      await fetch('/api/sync', { method: 'POST' });
+      pollSync();
+    }
+
+    function pollSync() {
+      const interval = setInterval(async () => {
+        const res = await fetch('/api/sync/status');
+        const data = await res.json();
+
+        const logConsole = document.getElementById('log-console');
+        logConsole.innerHTML = data.logs.map(l => `<div class="log-line">${l}</div>`).join('');
+        logConsole.scrollTop = logConsole.scrollHeight;
+
+        if (!data.is_running) {
+          clearInterval(interval);
+          const btn = document.getElementById('sync-now-btn');
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔄</span> Sync Now';
+          loadPairs();
+        }
+      }, 1500);
+    }
+
+    let exportedSecrets = {};
+    async function openExportModal() {
+      const res = await fetch('/api/export_github');
+      const data = await res.json();
+      exportedSecrets = data.secrets || {};
+      const list = document.getElementById('export-secrets-list');
+      list.innerHTML = Object.entries(exportedSecrets).map(([k, v]) => `
+        <div style="background:#0d1117; padding:8px 12px; border-radius:8px; border:1px solid #30363d;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="font-size:0.85rem; color:#58a6ff;">${k}</b>
+            <button class="btn" style="padding:2px 8px; font-size:0.75rem;" onclick="copySecret('${k}')">Copy</button>
+          </div>
+          <div style="font-size:0.75rem; color:#8b949e; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:400px; margin-top:2px;">
+            ${v ? v.substring(0, 50) + '...' : '(Not set)'}
+          </div>
+        </div>
+      `).join('');
+      openModal('export-modal');
+    }
+
+    function copySecret(key) {
+      const val = exportedSecrets[key] || '';
+      navigator.clipboard.writeText(val);
+      alert('Copied ' + key + ' to clipboard!');
+    }
+
+    // Initial load
+    fetchStatus();
+    loadPairs();
+  </script>
+</body>
+</html>

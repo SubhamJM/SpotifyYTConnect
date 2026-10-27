@@ -8,16 +8,32 @@ No paid subscriptions, no third-party web services. Your playlists stay in conti
 
 ## 🌟 Key Features
 
-* **Bi-directional or One-way Mirroring:**
-  * Spotify $\rightarrow$ YouTube Music
-  * YouTube Music $\rightarrow$ Spotify
-  * Both ways (Bidirectional sync)
+* **Dedicated Mirror Playlists (Separate Copies):**
+  * Auto-creates and maintains an independent clone on the target platform (e.g. Spotify `"for You"` $\rightarrow$ YouTube Music `"for You"`, and YouTube Music `"idk"` $\rightarrow$ Spotify `"idk"`).
+  * No mixing or jumbling different playlists together.
+* **TuneMyMusic-Style Web Interface:**
+  * Intuitive browser dashboard (`python web_app.py`) to connect Spotify & YouTube Music, browse playlists, create mirror pairs, and run one-click syncs.
+* **15-Second YouTube Music Setup:** No Google Cloud or API keys required—just copy request headers or cURL from your browser.
 * **Intelligent Metadata Matching:**
   * Strips video noise tags (e.g., `(Official Audio)`, `[Visualizer]`, `[MV]`, `(feat. ...)`).
   * Prioritizes official audio studio tracks (`filter="songs"`) on YouTube Music.
   * Validates song durations (tolerance $\pm$ 8s) to avoid matching 10-hour loops, live tracks, or video intros.
-* **100% Free & Serverless:** Runs automatically every 4 hours via GitHub Actions cron or on-demand with a click of a button.
-* **Safe Credential Management:** Auth tokens are stored encrypted in GitHub Secrets and hydrated dynamically during execution.
+* **100% Free & Serverless Automation:** Run locally anytime via web UI or automatically every 4 hours via GitHub Actions.
+
+---
+
+## 🖥️ Web Interface (TuneMyMusic Style)
+
+Prefer an interactive visual dashboard instead of editing config files?
+
+```bash
+python web_app.py
+```
+Open **`http://127.0.0.1:5000`** in your browser to:
+1. View connection status of your Spotify and YouTube Music accounts.
+2. Add new mirror playlist pairs with 1-click **Auto-Create Clone**.
+3. Hit **Sync Now** to watch songs match and sync with a live real-time progress console.
+4. Click **Export for GitHub Actions** to copy your pre-filled secrets directly into GitHub.
 
 ---
 

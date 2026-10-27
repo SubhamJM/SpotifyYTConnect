@@ -236,7 +236,6 @@ class YTMusicClient:
             return 0
 
         try:
-            # ytmusicapi add_playlist_items adds all videoIds, duplicates=False avoids internal dupes
             response = self.yt.add_playlist_items(
                 playlistId=playlist_id,
                 videoIds=video_ids,
@@ -246,6 +245,72 @@ class YTMusicClient:
             return len(video_ids)
         except Exception as e:
             logger.error(f"Failed to add tracks to YouTube Music playlist '{playlist_id}': {e}")
+            raise
+
+    def get_user_playlists(self, limit: int = 50) -> list[dict]:
+        """Fetches playlists from the user's YouTube Music library."""
+        if not self.is_authenticated:
+            return []
+        try:
+            raw_playlists = self.yt.get_library_playlists(limit=limit)
+            playlists = []
+            for item in raw_playlists:
+                if not item:
+                    continue
+                thumbs = item.get("thumbnails", [])
+                thumb_url = thumbs[-1]["url"] if thumbs else ""
+                playlists.append(
+                    {
+                        "id": item.get("playlistId"),
+                        "name": item.get("title"),
+                        "tracks_count": item.get("count", 0),
+                        "image_url": thumb_url,
+                        "url": f"https://music.youtube.com/playlist?list={item.get('playlistId')}",
+                    }
+                )
+            return playlists
+        except Exception as e:
+            logger.error(f"Failed to fetch YouTube Music playlists: {e}")
+            return []
+
+    def get_playlist_details(self, playlist_id: str) -> dict:
+        """Fetches metadata for a single YouTube Music playlist."""
+        try:
+            res = self.yt.get_playlist(playlistId=playlist_id, limit=1)
+            thumbs = res.get("thumbnails", [])
+            thumb_url = thumbs[-1]["url"] if thumbs else ""
+            return {
+                "id": res.get("id", playlist_id),
+                "name": res.get("title", f"YT Playlist {playlist_id}"),
+                "description": res.get("description", ""),
+                "tracks_count": res.get("trackCount", 0),
+                "image_url": thumb_url,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get details for YT Music playlist '{playlist_id}': {e}")
+            return {"id": playlist_id, "name": f"YT Playlist {playlist_id}", "tracks_count": 0}
+
+    def create_playlist(
+        self,
+        title: str,
+        description: str = "Synced by SpotifyYTConnect",
+        privacy_status: str = "PRIVATE",
+    ) -> str:
+        """Creates a new playlist in the user's YouTube Music library and returns its ID."""
+        if not self.is_authenticated:
+            raise PermissionError("Cannot create YouTube Music playlist without authentication.")
+        try:
+            # yt.create_playlist returns string playlistId or dict with id
+            res = self.yt.create_playlist(
+                title=title,
+                description=description,
+                privacy_status=privacy_status,
+            )
+            playlist_id = res if isinstance(res, str) else res.get("id", "")
+            logger.info(f"Created new YouTube Music playlist '{title}' with ID '{playlist_id}'")
+            return playlist_id
+        except Exception as e:
+            logger.error(f"Failed to create YouTube Music playlist '{title}': {e}")
             raise
 
     def __del__(self):

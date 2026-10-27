@@ -167,3 +167,64 @@ class SpotifyClient:
                 raise
 
         return total_added
+
+    def get_user_playlists(self, limit: int = 50) -> list[dict]:
+        """Fetches playlists from the authenticated Spotify user account."""
+        if not self.is_authenticated_user:
+            return []
+        try:
+            results = self.sp.current_user_playlists(limit=limit)
+            playlists = []
+            for item in results.get("items", []):
+                if not item:
+                    continue
+                images = item.get("images", [])
+                image_url = images[0]["url"] if images else ""
+                playlists.append(
+                    {
+                        "id": item.get("id"),
+                        "name": item.get("name"),
+                        "tracks_count": item.get("tracks", {}).get("total", 0),
+                        "image_url": image_url,
+                        "url": item.get("external_urls", {}).get("spotify", ""),
+                    }
+                )
+            return playlists
+        except Exception as e:
+            logger.error(f"Failed to fetch user Spotify playlists: {e}")
+            return []
+
+    def get_playlist_details(self, playlist_id: str) -> dict:
+        """Fetches metadata for a single playlist."""
+        try:
+            res = self.sp.playlist(playlist_id=playlist_id, fields="id,name,description,images,tracks.total")
+            images = res.get("images", [])
+            return {
+                "id": res.get("id"),
+                "name": res.get("name"),
+                "description": res.get("description", ""),
+                "tracks_count": res.get("tracks", {}).get("total", 0),
+                "image_url": images[0]["url"] if images else "",
+            }
+        except Exception as e:
+            logger.error(f"Failed to get details for Spotify playlist '{playlist_id}': {e}")
+            return {"id": playlist_id, "name": f"Spotify Playlist {playlist_id}", "tracks_count": 0}
+
+    def create_playlist(self, name: str, description: str = "Synced by SpotifyYTConnect", public: bool = False) -> str:
+        """Creates a new playlist in the user's Spotify library and returns its ID."""
+        if not self.is_authenticated_user:
+            raise PermissionError("Cannot create Spotify playlist without SPOTIFY_REFRESH_TOKEN.")
+        try:
+            user_info = self.sp.current_user()
+            user_id = user_info["id"]
+            new_pl = self.sp.user_playlist_create(
+                user=user_id,
+                name=name,
+                public=public,
+                description=description,
+            )
+            logger.info(f"Created new Spotify playlist '{name}' with ID '{new_pl['id']}'")
+            return new_pl["id"]
+        except Exception as e:
+            logger.error(f"Failed to create Spotify playlist '{name}': {e}")
+            raise
